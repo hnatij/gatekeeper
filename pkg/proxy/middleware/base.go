@@ -302,6 +302,8 @@ func IdentityHeadersMiddleware(
 						}
 
 						headers.Set(header, val)
+					} else {
+						headers.Set(header, "")
 					}
 
 					if enableIDTokenClaims {
