@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/gogatekeeper/gatekeeper/pkg/apperrors"
-	"github.com/gogatekeeper/gatekeeper/pkg/authorization"
+	"github.com/gogatekeeper/gatekeeper/pkg/config/core"
 	"github.com/gogatekeeper/gatekeeper/pkg/constant"
 	"github.com/gogatekeeper/gatekeeper/pkg/keycloak/config"
 	"github.com/gogatekeeper/gatekeeper/pkg/proxy/models"
@@ -37,7 +37,7 @@ import (
 
 func TestDebugHandler(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
-	cfg.Resources = make([]*authorization.Resource, 0)
+	cfg.Resources = make([]*core.Resource, 0)
 	cfg.EnableProfiling = true
 	requests := []fakeRequest{
 		{URI: "/debug/pprof/no_there", ExpectedCode: http.StatusNotFound},
@@ -303,7 +303,7 @@ func TestTokenEncryptionLoginHandler(t *testing.T) {
 						cfg.CookieAccessName:  "",
 						cfg.CookieIDTokenName: "",
 					},
-					ExpectedCookiesValidator: map[string]func(*testing.T, *config.Config, string) bool{
+					ExpectedCookiesValueValidator: map[string]func(*testing.T, *config.Config, string) bool{
 						cfg.CookieAccessName:  checkAccessTokenEncryption,
 						cfg.CookieIDTokenName: checkAccessTokenEncryption,
 					},
@@ -338,7 +338,7 @@ func TestTokenEncryptionLoginHandler(t *testing.T) {
 						"username": "test",
 					},
 					ExpectedCookies: map[string]string{cfg.CookieAccessName: ""},
-					ExpectedCookiesValidator: map[string]func(*testing.T, *config.Config, string) bool{
+					ExpectedCookiesValueValidator: map[string]func(*testing.T, *config.Config, string) bool{
 						cfg.CookieAccessName:  checkAccessTokenEncryption,
 						cfg.CookieRefreshName: checkRefreshTokenEncryption,
 					},
@@ -372,7 +372,7 @@ func TestTokenEncryptionLoginHandler(t *testing.T) {
 						"username": "test",
 					},
 					ExpectedCookies: map[string]string{cfg.CookieAccessName: ""},
-					ExpectedCookiesValidator: map[string]func(*testing.T, *config.Config, string) bool{
+					ExpectedCookiesValueValidator: map[string]func(*testing.T, *config.Config, string) bool{
 						cfg.CookieAccessName: checkAccessTokenEncryption,
 					},
 					ExpectedContent: func(body string, _ int) {
@@ -406,7 +406,7 @@ func TestTokenEncryptionLoginHandler(t *testing.T) {
 						"username": "test",
 					},
 					ExpectedCookies: map[string]string{cfg.CookieAccessName: ""},
-					ExpectedCookiesValidator: map[string]func(*testing.T, *config.Config, string) bool{
+					ExpectedCookiesValueValidator: map[string]func(*testing.T, *config.Config, string) bool{
 						cfg.CookieAccessName:  checkAccessTokenEncryption,
 						cfg.CookieRefreshName: checkRefreshTokenEncryption,
 					},
@@ -440,7 +440,7 @@ func TestTokenEncryptionLoginHandler(t *testing.T) {
 						"username": "test",
 					},
 					ExpectedCookies: map[string]string{cfg.CookieAccessName: ""},
-					ExpectedCookiesValidator: map[string]func(*testing.T, *config.Config, string) bool{
+					ExpectedCookiesValueValidator: map[string]func(*testing.T, *config.Config, string) bool{
 						cfg.CookieAccessName: func(t *testing.T, _ *config.Config, rawToken string) bool {
 							t.Helper()
 
@@ -487,7 +487,7 @@ func TestTokenEncryptionLoginHandler(t *testing.T) {
 						cfg.CookieAccessName:  "",
 						cfg.CookieIDTokenName: "",
 					},
-					ExpectedCookiesValidator: map[string]func(*testing.T, *config.Config, string) bool{
+					ExpectedCookiesValueValidator: map[string]func(*testing.T, *config.Config, string) bool{
 						cfg.CookieAccessName: func(t *testing.T, _ *config.Config, rawToken string) bool {
 							t.Helper()
 
@@ -821,7 +821,7 @@ func TestServiceRedirect(t *testing.T) {
 			Name: "TestRedirects",
 			ProxySettings: func(conf *config.Config) {
 				conf.NoRedirects = false
-				conf.Resources = []*authorization.Resource{
+				conf.Resources = []*core.Resource{
 					{
 						URL:         FakeAdminURL,
 						WhiteListed: false,
@@ -855,7 +855,7 @@ func TestServiceRedirect(t *testing.T) {
 			Name: "TestNoRedirects",
 			ProxySettings: func(conf *config.Config) {
 				conf.NoRedirects = true
-				conf.Resources = []*authorization.Resource{
+				conf.Resources = []*core.Resource{
 					{
 						URL:         FakeAdminURL,
 						WhiteListed: false,

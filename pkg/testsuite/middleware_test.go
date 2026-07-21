@@ -34,6 +34,7 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/go-resty/resty/v2"
 	"github.com/gogatekeeper/gatekeeper/pkg/authorization"
+	"github.com/gogatekeeper/gatekeeper/pkg/config/core"
 	"github.com/gogatekeeper/gatekeeper/pkg/constant"
 	"github.com/gogatekeeper/gatekeeper/pkg/encryption"
 	"github.com/gogatekeeper/gatekeeper/pkg/keycloak/config"
@@ -314,20 +315,20 @@ func TestAdminListener(t *testing.T) {
 
 func TestOauthRequestsWithBaseURI(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
-	cfg.BaseURI = "/base-uri"
+	cfg.BaseURI = TestBaseURI
 	requests := []fakeRequest{
 		{
-			URI:          "/base-uri/oauth/authorize",
+			URI:          TestBaseURI + "/oauth/authorize",
 			Redirects:    true,
 			ExpectedCode: http.StatusSeeOther,
 		},
 		{
-			URI:          "/base-uri/oauth/callback",
+			URI:          TestBaseURI + "/oauth/callback",
 			Redirects:    true,
 			ExpectedCode: http.StatusBadRequest,
 		},
 		{
-			URI:          "/base-uri/oauth/health",
+			URI:          TestBaseURI + "/oauth/health",
 			Redirects:    true,
 			ExpectedCode: http.StatusOK,
 		},
@@ -353,7 +354,7 @@ func TestOauthRequestsWithBaseURI(t *testing.T) {
 func TestMethodExclusions(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.NoRedirects = true
-	cfg.Resources = []*authorization.Resource{
+	cfg.Resources = []*core.Resource{
 		{
 			URL:     "/post",
 			Methods: []string{http.MethodPost, http.MethodPut},
@@ -381,7 +382,7 @@ func TestPreserveURLEncoding(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.EnableLogging = true
 	cfg.NoRedirects = true
-	cfg.Resources = []*authorization.Resource{
+	cfg.Resources = []*core.Resource{
 		{
 			URL:     "/api/v2/*",
 			Methods: utils.AllHTTPMethods,
@@ -486,7 +487,7 @@ func TestPreserveURLEncoding(t *testing.T) {
 
 func TestStrangeRoutingError(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
-	cfg.Resources = []*authorization.Resource{
+	cfg.Resources = []*core.Resource{
 		{
 			URL:     "/api/v1/events/123456789",
 			Methods: utils.AllHTTPMethods,
@@ -591,7 +592,7 @@ func TestStrangeRoutingError(t *testing.T) {
 
 func TestNoProxyingRequests(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
-	cfg.Resources = []*authorization.Resource{
+	cfg.Resources = []*core.Resource{
 		{
 			URL:     "/*",
 			Methods: utils.AllHTTPMethods,
@@ -626,7 +627,7 @@ const testAdminURI = "/admin/test"
 
 func TestStrangeAdminRequests(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
-	cfg.Resources = []*authorization.Resource{
+	cfg.Resources = []*core.Resource{
 		{
 			URL:     "/admin*",
 			Methods: utils.AllHTTPMethods,
@@ -727,7 +728,7 @@ func TestStrangeAdminRequests(t *testing.T) {
 //nolint:funlen
 func TestWhiteListedRequests(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
-	cfg.Resources = []*authorization.Resource{
+	cfg.Resources = []*core.Resource{
 		{
 			URL:     "/*",
 			Methods: utils.AllHTTPMethods,
@@ -980,7 +981,7 @@ func TestWhiteListedRequests(t *testing.T) {
 func TestRequireAnyRoles(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.NoRedirects = true
-	cfg.Resources = []*authorization.Resource{
+	cfg.Resources = []*core.Resource{
 		{
 			URL:            "/require_any_role/*",
 			Methods:        utils.AllHTTPMethods,
@@ -1026,7 +1027,7 @@ func TestHeaderPermissionsMiddleware(t *testing.T) {
 			Name: "TestMissingHeadersCodeFlow",
 			ProxySettings: func(conf *config.Config) {
 				conf.EnableDefaultDeny = true
-				conf.Resources = []*authorization.Resource{
+				conf.Resources = []*core.Resource{
 					{
 						URL:     "/with_headers*",
 						Methods: utils.AllHTTPMethods,
@@ -1053,7 +1054,7 @@ func TestHeaderPermissionsMiddleware(t *testing.T) {
 			Name: "TestHeadersCodeFlow",
 			ProxySettings: func(conf *config.Config) {
 				conf.EnableDefaultDeny = true
-				conf.Resources = []*authorization.Resource{
+				conf.Resources = []*core.Resource{
 					{
 						URL:     "/with_headers*",
 						Methods: utils.AllHTTPMethods,
@@ -1083,7 +1084,7 @@ func TestHeaderPermissionsMiddleware(t *testing.T) {
 			ProxySettings: func(conf *config.Config) {
 				conf.EnableDefaultDeny = true
 				conf.NoRedirects = true
-				conf.Resources = []*authorization.Resource{
+				conf.Resources = []*core.Resource{
 					{
 						URL:     "/with_headers*",
 						Methods: utils.AllHTTPMethods,
@@ -1111,7 +1112,7 @@ func TestHeaderPermissionsMiddleware(t *testing.T) {
 			ProxySettings: func(conf *config.Config) {
 				conf.EnableDefaultDeny = true
 				conf.NoRedirects = true
-				conf.Resources = []*authorization.Resource{
+				conf.Resources = []*core.Resource{
 					{
 						URL:     "/with_headers*",
 						Methods: utils.AllHTTPMethods,
@@ -1142,7 +1143,7 @@ func TestHeaderPermissionsMiddleware(t *testing.T) {
 			ProxySettings: func(conf *config.Config) {
 				conf.EnableDefaultDeny = true
 				conf.NoRedirects = true
-				conf.Resources = []*authorization.Resource{
+				conf.Resources = []*core.Resource{
 					{
 						URL:     "/with_headers*",
 						Methods: utils.AllHTTPMethods,
@@ -1173,7 +1174,7 @@ func TestHeaderPermissionsMiddleware(t *testing.T) {
 				conf.EnableDefaultDeny = true
 				conf.NoRedirects = true
 				conf.NoProxy = true
-				conf.Resources = []*authorization.Resource{
+				conf.Resources = []*core.Resource{
 					{
 						URL:     "/with_headers*",
 						Methods: utils.AllHTTPMethods,
@@ -1202,7 +1203,7 @@ func TestHeaderPermissionsMiddleware(t *testing.T) {
 				conf.EnableDefaultDeny = true
 				conf.NoRedirects = true
 				conf.NoProxy = true
-				conf.Resources = []*authorization.Resource{
+				conf.Resources = []*core.Resource{
 					{
 						URL:     "/with_headers*",
 						Methods: utils.AllHTTPMethods,
@@ -1248,7 +1249,7 @@ func TestHeaderPermissionsMiddleware(t *testing.T) {
 func TestGroupPermissionsMiddleware(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.NoRedirects = true
-	cfg.Resources = []*authorization.Resource{
+	cfg.Resources = []*core.Resource{
 		{
 			URL:     "/with_role_and_group*",
 			Methods: utils.AllHTTPMethods,
@@ -1374,7 +1375,7 @@ func TestGroupPermissionsMiddleware(t *testing.T) {
 //nolint:funlen
 func TestRolePermissionsMiddleware(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
-	cfg.Resources = []*authorization.Resource{
+	cfg.Resources = []*core.Resource{
 		{
 			URL:     "/admin*",
 			Methods: utils.AllHTTPMethods,
@@ -1921,7 +1922,7 @@ func TestAccessTokenEncryption(t *testing.T) {
 					ExpectedProxy:   true,
 					ExpectedCode:    http.StatusOK,
 					ExpectedCookies: map[string]string{cfg.CookieAccessName: ""},
-					ExpectedCookiesValidator: map[string]func(*testing.T, *config.Config, string) bool{
+					ExpectedCookiesValueValidator: map[string]func(*testing.T, *config.Config, string) bool{
 						cfg.CookieAccessName: checkAccessTokenEncryption,
 					},
 				},
@@ -1956,7 +1957,7 @@ func TestAccessTokenEncryption(t *testing.T) {
 					ExpectedProxy:   true,
 					ExpectedCode:    http.StatusOK,
 					ExpectedCookies: map[string]string{cfg.CookieAccessName: ""},
-					ExpectedCookiesValidator: map[string]func(*testing.T, *config.Config, string) bool{
+					ExpectedCookiesValueValidator: map[string]func(*testing.T, *config.Config, string) bool{
 						cfg.CookieAccessName: checkAccessTokenEncryption,
 					},
 				},
@@ -1992,7 +1993,7 @@ func TestAccessTokenEncryption(t *testing.T) {
 					ExpectedProxy:   true,
 					ExpectedCode:    http.StatusOK,
 					ExpectedCookies: map[string]string{cfg.CookieAccessName: ""},
-					ExpectedCookiesValidator: map[string]func(*testing.T, *config.Config, string) bool{
+					ExpectedCookiesValueValidator: map[string]func(*testing.T, *config.Config, string) bool{
 						cfg.CookieAccessName: checkAccessTokenEncryption,
 					},
 				},
@@ -2149,7 +2150,7 @@ func TestCustomHeadersHandlerNoProxyNoRedirects(t *testing.T) {
 func TestAdmissionHandlerRoles(t *testing.T) {
 	cfg := newFakeKeycloakConfig()
 	cfg.NoRedirects = true
-	cfg.Resources = []*authorization.Resource{
+	cfg.Resources = []*core.Resource{
 		{
 			URL:     FakeAdminURL,
 			Methods: utils.AllHTTPMethods,
@@ -2263,7 +2264,7 @@ func TestCustomHeaders(t *testing.T) {
 	}
 	for _, c := range requests {
 		cfg := newFakeKeycloakConfig()
-		cfg.Resources = []*authorization.Resource{{URL: "/admin*", Methods: utils.AllHTTPMethods}}
+		cfg.Resources = []*core.Resource{{URL: "/admin*", Methods: utils.AllHTTPMethods}}
 		cfg.Headers = c.Headers
 		newFakeProxy(cfg, &fakeAuthConfig{}).RunTests(t, []fakeRequest{c.Request})
 	}
@@ -2454,7 +2455,7 @@ func TestRolesAdmissionHandlerClaims(t *testing.T) {
 	}
 	for _, c := range requests {
 		cfg := newFakeKeycloakConfig()
-		cfg.Resources = []*authorization.Resource{{URL: "/admin*", Methods: utils.AllHTTPMethods}}
+		cfg.Resources = []*core.Resource{{URL: "/admin*", Methods: utils.AllHTTPMethods}}
 		cfg.MatchClaims = c.Matches
 		newFakeProxy(cfg, &fakeAuthConfig{}).RunTests(t, []fakeRequest{c.Request})
 	}
@@ -2566,7 +2567,7 @@ func TestGzipCompression(t *testing.T) {
 
 	for _, testCase := range requests {
 		cfg := *cfg
-		cfg.Resources = []*authorization.Resource{{URL: "/admin*", Methods: utils.AllHTTPMethods}}
+		cfg.Resources = []*core.Resource{{URL: "/admin*", Methods: utils.AllHTTPMethods}}
 
 		t.Run(
 			testCase.Name,
@@ -2621,7 +2622,7 @@ func TestEnableUma(t *testing.T) {
 				conf.ClientSecret = ValidPassword
 				conf.PatRetryCount = 5
 				conf.PatRetryInterval = 2 * time.Second
-				conf.Resources = []*authorization.Resource{
+				conf.Resources = []*core.Resource{
 					{
 						URL:        FakeTestURL,
 						Methods:    utils.AllHTTPMethods,
@@ -3030,8 +3031,7 @@ func TestEnableOpa(t *testing.T) {
 				conf.OpaTimeout = 60 * time.Second
 				conf.ClientID = ValidUsername
 				conf.ClientSecret = ValidPassword
-				//nolint:goconst
-				conf.ForbiddenPage = "../../templates/forbidden.html.tmpl"
+				conf.ForbiddenPage = ForbiddenPagePath
 			},
 			ExecutionSettings: []fakeRequest{
 				{

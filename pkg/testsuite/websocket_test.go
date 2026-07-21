@@ -24,7 +24,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/gogatekeeper/gatekeeper/pkg/authorization"
+	"github.com/gogatekeeper/gatekeeper/pkg/config/core"
 	"github.com/gogatekeeper/gatekeeper/pkg/constant"
 	"github.com/gogatekeeper/gatekeeper/pkg/utils"
 	"github.com/stretchr/testify/assert"
@@ -45,15 +45,15 @@ func TestWebSocket(t *testing.T) {
 	// Setup the proxy.
 	cfg := newFakeKeycloakConfig()
 	cfg.Upstream = upstreamURL
-	res := &authorization.Resource{
+	res := &core.Resource{
 		URL:     "/ws",
 		Methods: utils.AllHTTPMethods,
 		Roles:   []string{"default"},
 	}
 	cfg.Resources = append(cfg.Resources, res)
 
-	_, proxyServer, proxyURL := newTestProxyService(cfg)
-	defer proxyServer.Close()
+	proxy := newFakeProxy(cfg, &fakeAuthConfig{})
+	proxyURL := proxy.getServiceURL()
 
 	resp, _, err := makeTestCodeFlowLogin(proxyURL+FakeAdminURL, false)
 	require.NoError(t, err)

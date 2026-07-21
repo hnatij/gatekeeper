@@ -110,7 +110,25 @@ func DefaultTo(v, d string) string {
 	return d
 }
 
-func FileExists(filename string) bool {
+func FileExists(fileRoot, filename string) bool {
+	if fileRoot != "" {
+		root, err := os.OpenRoot(fileRoot)
+		if err != nil {
+			return false
+		}
+
+		defer root.Close()
+
+		_, err = root.Stat(filename)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return false
+			}
+		}
+
+		return true
+	}
+
 	_, err := os.Stat(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -153,16 +171,12 @@ func ContainsSubString(value string, list []string) bool {
 }
 
 // TryDialEndpoint dials the upstream endpoint via plain HTTP.
-func TryDialEndpoint(location *url.URL) (net.Conn, error) {
+func TryDialEndpoint(location *url.URL, tlsConfig *tls.Config) (net.Conn, error) {
 	switch dialAddress := DialAddress(location); location.Scheme {
 	case constant.UnsecureScheme:
 		return net.Dial("tcp", dialAddress)
 	default:
-		return tls.Dial("tcp", dialAddress, &tls.Config{
-			Rand: rand.Reader,
-			//nolint:gosec
-			InsecureSkipVerify: true,
-		})
+		return tls.Dial("tcp", dialAddress, tlsConfig)
 	}
 }
 
@@ -177,8 +191,13 @@ func TransferBytes(src io.Reader, dest io.Writer, wg *sync.WaitGroup) (int64, er
 }
 
 // TryUpdateConnection attempt to upgrade the connection to a http pdy stream.
-func TryUpdateConnection(req *http.Request, writer http.ResponseWriter, endpoint *url.URL) error {
-	server, err := TryDialEndpoint(endpoint)
+func TryUpdateConnection(
+	req *http.Request,
+	writer http.ResponseWriter,
+	endpoint *url.URL,
+	tlsConfig *tls.Config,
+) error {
+	server, err := TryDialEndpoint(endpoint, tlsConfig)
 	if err != nil {
 		return err
 	}
@@ -750,6 +769,48 @@ func GetRandomString(n int) (string, error) {
 	}
 
 	return string(runes), nil
+}
+
+func ReadFile(fileRoot, filename string) ([]byte, error) {
+	var (
+		err     error
+		content []byte
+	)
+
+	if fileRoot != "" {
+		root, err := os.OpenRoot(fileRoot)
+		if err != nil {
+			return nil, err
+		}
+
+		defer root.Close()
+
+		content, err = root.ReadFile(filename)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		content, err = os.ReadFile(filename)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return content, nil
+}
+
+func LoadX509KeyPairFromRoot(fileRoot, certFile, keyFile string) (tls.Certificate, error) {
+	certPEMBlock, err := ReadFile(fileRoot, certFile)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	keyPEMBlock, err := ReadFile(fileRoot, keyFile)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	return tls.X509KeyPair(certPEMBlock, keyPEMBlock)
 }
 
 const HostnamePlaceholder = "{hostname}"

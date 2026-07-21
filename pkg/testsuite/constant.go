@@ -35,10 +35,13 @@ const (
 	DefaultOpenIDProviderRetryCount = 3
 	DefaultIat                      = 1450372669
 	OAuthCodeLength                 = 32
+	TestBaseURI                     = "/base-uri"
+	ForbiddenPagePath               = "../../templates/forbidden.html.tmpl"
 )
 
 var (
 	ErrCreateFakeProxy = errors.New("failed to create fake proxy service")
+	ErrRunFakeProxy    = errors.New("failed to run fake proxy service")
 	ErrRunHTTPServer   = errors.New("failed to run http server")
 	ErrShutHTTPServer  = errors.New("failed to shutdown http server")
 )
