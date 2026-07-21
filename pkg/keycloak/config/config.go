@@ -1284,7 +1284,7 @@ func (r *Config) isExternalIDPEnrichmentValid() error {
 			return fmt.Errorf("extidp-users-file is required when enable-external-idp-enrichment is true")
 		}
 
-		if !utils.FileExists(r.ExtIDPUsersFile) {
+		if !utils.FileExists(r.FileRoot, r.ExtIDPUsersFile) {
 			return fmt.Errorf("external IDP users file does not exist: %s", r.ExtIDPUsersFile)
 		}
 
