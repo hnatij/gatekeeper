@@ -1,4 +1,4 @@
-ARG BASE_IMG=alpine:3.24.1
+ARG BASE_IMG=alpine:3.24.2
 ARG HOMEDIR=/opt/gatekeeper
 
 #

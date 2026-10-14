@@ -153,7 +153,7 @@ Re-run it every time `go.mod` changes. A stale `vendor/` causes the `inconsisten
 ```bash
 docker buildx build --load --platform linux/amd64 \
   -f Dockerfile.local \
-  --build-arg BASE_IMG=alpine:3.24.1 \
+  --build-arg BASE_IMG=alpine:3.24.2 \
   -t gatekeeper:local-test .
 ```
 

@@ -22,7 +22,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 IMAGE="gatekeeper:local-test"
-BASE_IMG="alpine:3.24.1"
+BASE_IMG="alpine:3.24.2"
 SKIP_TESTS=false
 NO_DOCKER=false
 RELEASE=""
@@ -81,6 +81,26 @@ fail() { printf '\033[0;31mFAILED\033[0m %s\n' "$*" >&2; exit 1; }
 
 command -v go >/dev/null || fail "go is not installed"
 $NO_DOCKER || command -v docker >/dev/null || fail "docker is not installed"
+
+## Base image freshness: warn when a newer Alpine release exists, it usually brings security fixes
+## Not fatal, CodeBuild uses the baseImg of sproxy-inventory.json anyway
+if [[ "${BASE_IMG}" =~ ^alpine:[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    LATEST_ALPINE=$(curl -fsS --max-time 10 https://alpinelinux.org/releases.json 2>/dev/null | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+branch = next(b for b in d["release_branches"] if b["rel_branch"] == d["latest_stable"])
+print(branch["releases"][0]["version"])' 2>/dev/null) || LATEST_ALPINE=""
+
+    if [ -z "${LATEST_ALPINE}" ]; then
+        echo "NOTE: could not check the latest Alpine release (no network?), using ${BASE_IMG}"
+    elif [ "${BASE_IMG}" != "alpine:${LATEST_ALPINE}" ]; then
+        printf '\033[0;33mWARNING\033[0m %s is not the latest Alpine release, alpine:%s is available\n' "${BASE_IMG}" "${LATEST_ALPINE}"
+        echo "        update BASE_IMG in Dockerfile.local, this script, LOCAL_TESTING.md and in dxcgt-docker-image-store"
+        echo "        (AIA-SProxy/sproxy-inventory.json baseImg + AIA-SProxy/gatekeeper/env.sh), or use --base-img alpine:${LATEST_ALPINE}"
+    else
+        ok "${BASE_IMG} is the latest Alpine release"
+    fi
+fi
 
 #
 # 0) Release pre-checks, done first so that we don't wait for the tests to find out the tag can't be created
