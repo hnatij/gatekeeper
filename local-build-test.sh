@@ -149,6 +149,7 @@ LFLAGS="-X github.com/gogatekeeper/gatekeeper/pkg/proxy/core.release=${TAG} -X g
 mkdir -p bin
 CGO_ENABLED=0 go build -tags netgo -ldflags "-s -w ${LFLAGS}" -o bin/gatekeeper cmd/keycloak/gatekeeper-keycloak.go || fail "go build"
 ok "$(./bin/gatekeeper --version 2>/dev/null | grep 'gatekeeper version')"
+[ -n "${RELEASE}" ] && echo "NB: ${TAG_NAME} is only created at the end, the image built by CodeBuild from it will report ${TAG_NAME}"
 
 #
 # 2) Unit tests
