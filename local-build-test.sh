@@ -6,8 +6,14 @@
 #   2) run the unit tests, the failures expected because of the fork customizations are tolerated
 #   3) build the docker image with Dockerfile.local (vendored deps, works behind the corporate TLS proxy)
 #   4) smoke test the image (version, custom flags, runtime user, templates)
+#   5) with --release: create the git tag that the CodeBuild buildspec checks out (it never creates tags itself)
 #
 # Usage: ./local-build-test.sh [--skip-tests] [--no-docker] [--image <name:tag>] [--base-img <image>]
+#                              [--release gg-<version>-gtk<n>]
+#
+#   --release gg-5.0.0-gtk2   same value as the "tag" of gatekeeper in dxcgt-docker-image-store sproxy-inventory.json
+#                             creates the annotated tag v5.0.0-gtk2 on HEAD once all the checks passed
+#                             the tag is NOT pushed, the push commands are printed at the end
 #
 # NB: the e2e tests (e2e/) are not run, they need a Keycloak cluster
 
@@ -19,6 +25,8 @@ IMAGE="gatekeeper:local-test"
 BASE_IMG="alpine:3.24.1"
 SKIP_TESTS=false
 NO_DOCKER=false
+RELEASE=""
+RELEASE_BRANCH="natro"
 
 ## Tests failing by design because of the fork customizations (see BOGBERT_CHANGES.md on bogbert/bogbert):
 ##  - TestExtractDiscoveryURIComponents: Cognito discovery URIs are accepted
@@ -52,7 +60,8 @@ while [ $# -gt 0 ]; do
         --no-docker)  NO_DOCKER=true ;;
         --image)      IMAGE="$2"; shift ;;
         --base-img)   BASE_IMG="$2"; shift ;;
-        -h|--help)    sed -n '2,13p' "$0"; exit 0 ;;
+        --release)    RELEASE="$2"; shift ;;
+        -h|--help)    sed -n '2,20p' "$0"; exit 0 ;;
         *) echo "ERROR: unknown option '$1'" >&2; exit 1 ;;
     esac
     shift
@@ -72,6 +81,39 @@ fail() { printf '\033[0;31mFAILED\033[0m %s\n' "$*" >&2; exit 1; }
 
 command -v go >/dev/null || fail "go is not installed"
 $NO_DOCKER || command -v docker >/dev/null || fail "docker is not installed"
+
+#
+# 0) Release pre-checks, done first so that we don't wait for the tests to find out the tag can't be created
+#
+if [ -n "${RELEASE}" ]; then
+    step "Checking that ${RELEASE} can be released"
+
+    ## Same conversion as in gatekeeper.buildspec.yml: gg-5.0.0-gtk2 -> v5.0.0-gtk2
+    [[ "${RELEASE}" =~ ^gg-([0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?)-gtk([0-9]+)$ ]] \
+        || fail "--release must look like gg-<version>-gtk<n> (e.g. gg-5.0.0-gtk2), got '${RELEASE}'"
+    RELEASE_VERSION="${BASH_REMATCH[1]}"
+    TAG_NAME="v${RELEASE_VERSION}-gtk${BASH_REMATCH[3]}"
+
+    ## A release is only meaningful if everything was checked
+    { $SKIP_TESTS || $NO_DOCKER; } && fail "--release can't be combined with --skip-tests or --no-docker"
+
+    ## The tag must point to a commit that contains everything, and that CodeBuild can clone
+    [ -z "$(git status --porcelain --untracked-files=no)" ] || fail "uncommitted changes, commit them first (the tag would not include them)"
+    [ "$(git branch --show-current)" = "${RELEASE_BRANCH}" ] || fail "releases are made from the ${RELEASE_BRANCH} branch, you are on '$(git branch --show-current)'"
+    git fetch -q origin "${RELEASE_BRANCH}" || fail "can't fetch origin/${RELEASE_BRANCH}"
+    [ "$(git rev-parse HEAD)" = "$(git rev-parse "origin/${RELEASE_BRANCH}")" ] \
+        || fail "HEAD is not the same as origin/${RELEASE_BRANCH}, push the branch first (git push origin ${RELEASE_BRANCH}) or pull"
+
+    git rev-parse -q --verify "refs/tags/${TAG_NAME}" >/dev/null && fail "tag ${TAG_NAME} already exists locally, bump the gtk number"
+    [ -z "$(git ls-remote --tags origin "refs/tags/${TAG_NAME}")" ] || fail "tag ${TAG_NAME} already exists on origin, bump the gtk number"
+
+    ## The version in the name must be the upstream gogatekeeper version natro is based on
+    UPSTREAM_VERSION=$(git describe --tags --abbrev=0 --exclude 'v*' HEAD)
+    [ "${UPSTREAM_VERSION}" = "${RELEASE_VERSION}" ] \
+        || fail "natro is based on upstream ${UPSTREAM_VERSION}, but the release is named for ${RELEASE_VERSION}"
+
+    ok "${TAG_NAME} will be created on $(git rev-parse --short HEAD) once all the checks passed"
+fi
 
 #
 # 1) Binary
@@ -110,9 +152,18 @@ else
             echo "expected failure: $t"
             continue
         fi
-        ## Some tests are timing sensitive (e.g. TestMetricsMiddleware), give them a second chance
+        ## Some tests are timing sensitive, upstream too (e.g. TestMetricsMiddleware, TestCookieDomainHostHeader),
+        ## give them up to 3 more chances
         echo "unexpected failure: $t, retrying it alone..."
-        if go test ./pkg/... -run "^${t}\$" > "${LOG_DIR}/retry.log" 2>&1; then
+        PASSED=false
+        for attempt in 1 2 3; do
+            if go test ./pkg/... -run "^${t}\$" -count=1 > "${LOG_DIR}/retry.log" 2>&1; then
+                PASSED=true
+                break
+            fi
+            echo "  attempt ${attempt} failed"
+        done
+        if $PASSED; then
             echo "  passed on retry (flaky): $t"
         else
             grep -E -A15 "^--- FAIL: ${t}" "${LOG_DIR}/retry.log" | head -40
@@ -167,3 +218,24 @@ fi
 step "All checks passed"
 echo "Image: ${IMAGE}"
 echo "NB: the e2e tests were not run, and the image is only tagged locally (not pushed)"
+
+#
+# 5) Release tag
+#
+if [ -n "${RELEASE}" ]; then
+    step "Creating the release tag ${TAG_NAME}"
+    ## HEAD must not have moved while the checks were running
+    [ "$(git rev-parse HEAD)" = "$(git rev-parse "origin/${RELEASE_BRANCH}")" ] || fail "HEAD changed during the checks, run the script again"
+    git tag -a "${TAG_NAME}" -m "${RELEASE}: gatekeeper ${RELEASE_VERSION} + GT customizations"
+    ok "${TAG_NAME} -> $(git rev-parse --short "${TAG_NAME}^{commit}")"
+
+    echo
+    echo "Next steps:"
+    echo "  1) push the tag:            git push origin ${TAG_NAME}"
+    echo "  2) check it's on GitHub:    git ls-remote --tags origin ${TAG_NAME}"
+    echo "  3) dxcgt-docker-image-store: set \"tag\": \"${RELEASE}\" for gatekeeper in AIA-SProxy/sproxy-inventory.json"
+    echo "                               and add the changelog line in AIA-SProxy/gatekeeper/env.sh"
+    echo "  4) in the CodeBuild log, check for: Tag '${TAG_NAME}' found"
+    echo
+    echo "To undo the tag before it's pushed: git tag -d ${TAG_NAME}"
+fi
