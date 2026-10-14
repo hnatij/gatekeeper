@@ -106,17 +106,17 @@ Re-run them alone a few times. If most runs pass, ignore it:
 go test ./pkg/testsuite -run '^TestCookieDomainHostHeader$' -count=5 2>&1 | grep -E '^(ok|FAIL|--- FAIL)'
 ```
 
-To prove a failure is upstream flakiness and not ours, run the same command on upstream (see the worktree trick below, with `upstream/master` instead of `bogbert/natro-5.0.0`).
+To prove a failure is upstream flakiness and not ours, run the same command on upstream (see the worktree trick below, with `upstream/master` instead of `origin/natro`).
 
-### Optional: compare with the version currently in production
+### Optional: compare with the previous version of natro
 
-If you are not sure whether a failure comes from the merge, run the same tests on the production branch in a separate folder:
+If you are not sure whether a failure comes from the merge, run the same tests on the last pushed `natro` (before your merge) in a separate folder:
 
 ```bash
-git fetch bogbert
-git worktree add /tmp/gk-prod bogbert/natro-5.0.0      # use the branch currently in production
-(cd /tmp/gk-prod && go test ./pkg/... 2>&1 | grep -oE '^--- FAIL: [A-Za-z0-9_]+' | sort -u)
-git worktree remove --force /tmp/gk-prod
+git fetch origin
+git worktree add --detach /tmp/gk-prev origin/natro
+(cd /tmp/gk-prev && go test ./pkg/... 2>&1 | grep -oE '^--- FAIL: [A-Za-z0-9_]+' | sort -u)
+git worktree remove --force /tmp/gk-prev
 ```
 
 If the failure also happens there, the merge didn't introduce it.
@@ -126,9 +126,9 @@ If the failure also happens there, the merge didn't introduce it.
 Our customizations are the difference between our branch and upstream. This difference should be the same before and after the merge:
 
 ```bash
-# before: production branch vs the upstream version it was based on
-git diff 5.0.0 bogbert/natro-5.0.0 | grep -v '^index' > /tmp/custom-before.diff
-# after: your branch vs the upstream commit you merged
+# before: last pushed natro vs the upstream commit it was based on
+git diff $(git merge-base origin/natro upstream/master) origin/natro | grep -v '^index' > /tmp/custom-before.diff
+# after: your merged natro vs the upstream commit you just merged
 git diff upstream/master HEAD | grep -v '^index' > /tmp/custom-after.diff
 
 diff /tmp/custom-before.diff /tmp/custom-after.diff && echo "customizations identical"
