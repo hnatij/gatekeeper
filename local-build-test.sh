@@ -69,6 +69,8 @@ done
 
 ## The local Go config has GOSUMDB=off, which prevents the download of the toolchain required by go.mod
 export GOSUMDB="${GOSUMDB_OVERRIDE:-sum.golang.org}"
+## The local Go config has GOPROXY=direct, which clones every module with git (very slow), use the module proxy
+export GOPROXY="${GOPROXY_OVERRIDE:-https://proxy.golang.org,direct}"
 ## The vendor/ directory is only used by Dockerfile.local, the host build uses the module cache
 export GOFLAGS=-mod=mod
 

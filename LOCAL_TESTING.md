@@ -16,10 +16,11 @@ docker --version
 git status          # should be clean, otherwise the binary is reported as "-dirty"
 ```
 
-Your Go config has `GOSUMDB=off`, which blocks the download of the Go version required by `go.mod`. Set these two variables in every terminal you use for the steps below:
+Your Go config (`~/.config/go/env`) has `GOSUMDB=off`, which blocks the download of the Go version required by `go.mod`, and `GOPROXY=direct`, which makes module downloads very slow. Set these variables in every terminal you use for the steps below:
 
 ```bash
 export GOSUMDB=sum.golang.org   # allows Go to download the right toolchain (go 1.27.x)
+export GOPROXY=https://proxy.golang.org,direct   # your config has GOPROXY=direct (clones every module with git, very slow)
 export GOFLAGS=-mod=mod         # ignores the local vendor/ folder (only Dockerfile.local uses it)
 ```
 
