@@ -99,6 +99,7 @@ These tests depend on timing and sometimes fail, **upstream too** (a busy WSL ma
 |------------------------------|---------------------------------------------------------------------------------------------|---------------------------------------|
 | `TestMetricsMiddleware`      | Timing                                                                                      | Rare                                  |
 | `TestCookieDomainHostHeader` | Token expires after 2s, test sleeps 2.5s, then expects a refresh: gets `303` instead of `200` | ~2/10 runs on clean upstream, ~3/10 on ours |
+| `TestAccessTokenEncryption`  | Timing (token expiry)                                                                       | Rare                                  |
 
 Re-run them alone a few times. If most runs pass, ignore it:
 
