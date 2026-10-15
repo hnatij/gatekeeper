@@ -191,6 +191,26 @@ rm -rf bin/        # vendor/ can stay, it is git-ignored
 
 ---
 
+## 6. Vulnerability scan (CVE report)
+
+`cve-report.sh` runs [govulncheck](https://go.dev/doc/security/vuln/), the official Go scanner. It keeps only the vulnerabilities whose code gatekeeper actually calls, looks up their severity on NVD, and prints a table in Jira format.
+
+```bash
+# vulnerabilities in the current version (exit code 1 if any)
+./cve-report.sh
+
+# CVEs fixed since a previous release, for the Jira ticket
+./cve-report.sh --fixed <previous release tag or commit> > cves.txt
+```
+
+Each version is scanned in a temporary checkout, so uncommitted changes are ignored. A run takes a few minutes, plus about 7s per CVE for the NVD lookups (NVD limits requests without a key; set `NVD_API_KEY=<key>` to go faster).
+
+Severity: NVD CVSS v3.1 (else v4.0), else the GitHub advisory, else `Not rated yet` (NVD hasn't analysed the CVE yet, check again later on `https://nvd.nist.gov/vuln/detail/<CVE>`).
+
+Most findings are in the Go standard library: they are fixed by a newer Go version (`toolchain` line in `go.mod`). The others by bumping the module with `go get <module>@<fixed version>` (not `go mod tidy`, it removes modules that upstream keeps).
+
+---
+
 ## Troubleshooting
 
 | Error                                                                                        | Cause / fix                                                                         |
